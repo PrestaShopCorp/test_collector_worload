@@ -1,0 +1,10 @@
+singleQuote: true
+trailingComma: all
+overrides:
+  - files:
+      - '**/*.js'
+    options:
+      singleQuote: false
+      parser: flow
+      trailingComma: 'es5'
+      tabWidth: 2
