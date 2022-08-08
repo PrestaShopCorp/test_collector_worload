@@ -1,9 +1,12 @@
 import dotenv from 'dotenv';
-import {EventStoreDBClient, jsonEvent, JSONType} from "@eventstore/db-client";
+import {AppendResult, EventStoreDBClient, jsonEvent, JSONType} from "@eventstore/db-client";
 import {Client} from "@eventstore/db-client/dist/Client";
 import pino from "pino";
 
-let logger: pino.Logger;
+let logger: {
+    debug: Function,
+    info: Function,
+};
 
 type Event = {
     type: string,
@@ -11,17 +14,22 @@ type Event = {
     metadata?: any,
 }
 
-function publishEvent(client: Client, stream: string, events: Event[]) {
+async function time(f: Function): Promise<{ time: number, result: any }> {
+    const t0 = performance.now();
+    const result = await f();
+    const t1 = performance.now();
+    return {time: t1 - t0, result};
+}
+
+
+async function publishEvent(client: Client, stream: string, events: Event[]): Promise<AppendResult> {
     const jsonEvents = events.map((d) => jsonEvent(d))
-    client.appendToStream(stream, jsonEvents)
+    return client.appendToStream(stream, jsonEvents)
 }
 
 async function batchTest(client: Client, batchSize: number, batchCount: number): Promise<void> {
-    logger.info(`running test with ${JSON.stringify({size: batchSize, parallel: batchCount})}`);
-    const timerKey = `batchTest-${batchSize}-${batchCount}`
-
-    console.time(timerKey);
-    const streamName = process.env.TEST_STREAM || 'test_stream';
+    logger.debug(`batch test with ${JSON.stringify({size: batchSize, parallel: batchCount})}`);
+    const streamName = process.env.TEST_STREAM || 'my_sample_stream';
 
     for (let i = 0; i < batchCount; i++) {
         const events = [];
@@ -30,18 +38,33 @@ async function batchTest(client: Client, batchSize: number, batchCount: number):
         }
         await publishEvent(client, streamName, events);
     }
-    console.timeEnd(timerKey);
+}
+
+async function parallelTest(client: Client, batchSize: number, batchCount: number, parallelCount: number): Promise<void> {
+    logger.debug(`parallel test with ${JSON.stringify({batchSize, batchCount, parallelCount})}`);
+
+    const testRuns = [];
+
+    for (let h = 0; h < parallelCount; h++) {
+        testRuns.push(batchTest(client, batchSize, batchCount));
+    }
+    await Promise.all(testRuns);
 }
 
 async function run(): Promise<void> {
     dotenv.config({path: `.env`});
 
-    logger = pino({
-        level: process.env.LOGLEVEL,
-        transport: {
-            target : 'pino-pretty'
-        },
-    });
+    /*    logger = pino({
+            level: process.env.LOGLEVEL,
+            transport: {
+                target: 'pino-pretty'
+            },
+        });*/
+
+    logger = {
+        debug: console.log,
+        info: console.log,
+    };
 
     logger.info('starting up');
     const connectionString = process.env.EVENTSTORE_CONNECTION_STRING || 'esdb://localhost';
@@ -49,7 +72,21 @@ async function run(): Promise<void> {
     const client = EventStoreDBClient.connectionString(connectionString);
     logger.info(`connected`);
 
-    await batchTest(client, 200, 50);
+
+    const testParams = [
+        [50, 100, 100],
+    ]
+
+    for (const params of testParams) {
+        const [batchSize, batchCount, parallelCount] = params;
+        const timeResult = await time(async () => await parallelTest(client, batchSize, batchCount, parallelCount))
+        logger.info(`ran parallel test with ${JSON.stringify({
+            batchSize,
+            batchCount,
+            parallelCount,
+            totalItems: batchSize * batchCount * parallelCount
+        })} in ${timeResult.time}, items/s : ${(batchSize * batchCount * parallelCount) / (timeResult.time / 1000)}`)
+    }
 }
 
 run().then(r => {
