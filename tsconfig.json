@@ -14,7 +14,8 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "incremental": true,
-    "allowJs": true
+    "allowJs": true,
+    "strict": true,
   },
   "exclude": [
     "node_modules",
