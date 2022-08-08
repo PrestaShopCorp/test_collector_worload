@@ -7,7 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "tsc": "tsc",
-    "dev": "ts-node-dev --respawn --transpileOnly ./src/index.ts",
+    "dev": "ts-node ./src/index.ts",
     "prod": "tsc && node ./dist/index.js",
     "start": "node index.js"
   },
