@@ -28,7 +28,7 @@ async function publishEvent(client: Client, stream: string, events: Event[]): Pr
 }
 
 async function batchTest(client: Client, batchSize: number, batchCount: number): Promise<void> {
-    logger.debug(`batch test with ${JSON.stringify({size: batchSize, parallel: batchCount})}`);
+    logger.debug(`batch test with ${JSON.stringify({batchSize, batchCount})}`);
     const streamName = process.env.TEST_STREAM || 'my_sample_stream';
 
     for (let i = 0; i < batchCount; i++) {
@@ -75,6 +75,7 @@ async function run(): Promise<void> {
 
     const testParams = [
         [50, 100, 100],
+        [50, 100, 1000],
     ]
 
     for (const params of testParams) {
@@ -87,6 +88,8 @@ async function run(): Promise<void> {
             totalItems: batchSize * batchCount * parallelCount
         })} in ${timeResult.time}, items/s : ${(batchSize * batchCount * parallelCount) / (timeResult.time / 1000)}`)
     }
+
+    // 2917899 -> 3417899
 }
 
 run().then(r => {
