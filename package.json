@@ -14,7 +14,7 @@
   "dependencies": {
     "@eventstore/db-client": "^3.3.1",
     "class-transformer": "^0.5.1",
-    "class-validator": "^0.13.2",
+    "class-validator": "^0.14.0",
     "dotenv": "^16.0.1",
     "md5": "^2.3.0",
     "pino": "^8.4.0",
